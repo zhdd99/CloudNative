@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: httpserver
+  name: httpserver
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: httpserver
+  template:
+    metadata:
+      labels:
+        app: httpserver
+    spec:
+      containers:
+      - image: zhdd99/httpserver:v2.0
+        imagePullPolicy: Always
+        name: httpserver
+        volumeMounts:
+          - mountPath: /home/webserver
+            name: log-volume
+        resources: 
+          limits:
+            memory: 200Mi 
+          requests:
+            memory: 100Mi
+        livenessProbe:
+          httpGet:
+            ### this probe will fail with 404 error code
+            ### only httpcode between 200-400 is retreated as success
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            ### this probe will fail with 404 error code
+            ### only httpcode between 200-400 is retreated as success
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 2
+      volumes:
+        - name: log-volume
+          emptyDir:
+            sizeLimit: 200Mi
+      
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpserver
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+  selector:
+    app: httpserver
